@@ -1,0 +1,420 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Dojo">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon.png">
+<style>html,body{margin:0}body{padding-top:env(safe-area-inset-top,0px)}</style>
+</head><body>
+<title>Listening Dojo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: Dorm Dojo's sibling. Level card on top, episode list as a path, one episode screen with player → quiz → transcript. Indigo ink + matcha (correct) + persimmon (XP). */
+:root{
+  --bg:#F2F3F8; --surface:#FFFFFF; --sunk:#E7E9F2; --ink:#1B2147; --muted:#5C628A; --line:#D9DCEA;
+  --accent:#2F46C4; --accent-ink:#FFFFFF; --matcha:#3F7F22; --matcha-soft:#E3F0DA;
+  --kaki:#D86A1E; --kaki-soft:#FBE8D8; --hard:#C2402F; --hard-soft:#F8DEDA; --lock:#B3B7CB;
+  --f-display:"Dela Gothic One","Hiragino Sans",system-ui,sans-serif;
+  --f-body:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1024; --surface:#161A35; --sunk:#1E2343; --ink:#E9EBF7; --muted:#A1A6C8; --line:#2A2F55;
+  --accent:#8193FF; --accent-ink:#0D1024; --matcha:#8DC86B; --matcha-soft:#22341C;
+  --kaki:#F39A55; --kaki-soft:#3A2617; --hard:#F07C6E; --hard-soft:#3D1F1D; --lock:#454A70; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1024; --surface:#161A35; --sunk:#1E2343; --ink:#E9EBF7; --muted:#A1A6C8; --line:#2A2F55;
+  --accent:#8193FF; --accent-ink:#0D1024; --matcha:#8DC86B; --matcha-soft:#22341C;
+  --kaki:#F39A55; --kaki-soft:#3A2617; --hard:#F07C6E; --hard-soft:#3D1F1D; --lock:#454A70; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px;display:flex;flex-direction:column;gap:14px}
+h1,h2{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance}
+h1{font-size:26px} h2{font-size:20px}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.muted{color:var(--muted)} .small{font-size:13px}
+.row{display:flex;align-items:center;gap:10px} .between{justify-content:space-between}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;border-radius:16px;font-weight:800;font-size:16px;background:var(--sunk);color:var(--ink)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;background:var(--sunk);color:var(--muted);letter-spacing:.02em}
+.chip.kaki{background:var(--kaki-soft);color:var(--kaki)} .chip.matcha{background:var(--matcha-soft);color:var(--matcha)}
+/* level card */
+.lvl{display:flex;gap:14px;align-items:center}
+.lvl .k{width:72px;height:72px;border-radius:22px;background:var(--kaki);color:#fff;display:grid;place-items:center;font-family:var(--f-display);font-size:30px;flex:none}
+.xpbar{height:6px;border-radius:6px;background:var(--sunk);overflow:hidden}
+.xpbar i{display:block;height:100%;background:var(--kaki);border-radius:6px;transition:width .6s}
+/* episode path */
+.ep{display:flex;gap:12px;align-items:center;text-align:left;width:100%;padding:14px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.ep .n{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-family:var(--f-display);background:var(--sunk);flex:none}
+.ep.done .n{background:var(--matcha-soft);color:var(--matcha)}
+.ep.next{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.ep.next .n{background:var(--accent);color:var(--accent-ink)}
+.ep.locked{opacity:.5;cursor:not-allowed}
+.ep .t{flex:1;min-width:0} .ep .t b{display:block;font-size:17px}
+/* player */
+.player{display:flex;flex-direction:column;gap:10px}
+.play{width:76px;height:76px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.play svg{width:30px;height:30px}
+.track{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.prog{height:8px;border-radius:8px;background:var(--sunk);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent)}
+.nums{font-variant-numeric:tabular-nums}
+.listens{display:flex;gap:6px}
+.listens span{width:26px;height:8px;border-radius:4px;background:var(--sunk)}
+.listens span.on{background:var(--kaki)}
+/* quiz */
+.q{display:flex;flex-direction:column;gap:8px;padding-block:6px;border-top:1px solid var(--line)}
+.q:first-of-type{border-top:0}
+.q .qt{font-weight:700;font-size:17px}
+.hint{font-size:13px;color:var(--muted);text-decoration:underline dotted;align-self:flex-start}
+.choices{display:grid;gap:8px}
+.choice{text-align:left;padding:12px 14px;border-radius:14px;background:var(--sunk);font-weight:500}
+.choice.right{background:var(--matcha-soft);color:var(--matcha);font-weight:800}
+.choice.wrong{background:var(--hard-soft);color:var(--hard);text-decoration:line-through}
+.choice:disabled{cursor:default}
+.pts{font-size:13px;font-weight:800}
+.pts.full{color:var(--matcha)} .pts.half{color:var(--kaki)} .pts.zero{color:var(--hard)}
+.rate{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rate .choice{text-align:center}
+.model{background:var(--sunk);border-radius:14px;padding:12px 14px}
+/* transcript */
+.line{display:grid;grid-template-columns:54px 1fr;gap:8px;text-align:left;padding:8px 6px;border-radius:12px;width:100%}
+.line .who{font-size:12px;font-weight:800;color:var(--muted);padding-top:3px}
+.line.missed{background:var(--hard-soft)}
+.line.playing{background:var(--kaki-soft)}
+.back{font-weight:800;color:var(--accent);align-self:flex-start;padding:4px 0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion: reduce){.xpbar i{transition:none}}
+</style>
+
+<div class="wrap" id="app">
+  <div class="card"><p class="muted">Loading the dojo…</p></div>
+</div>
+<audio id="audio" preload="auto"></audio>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- rules ---------- */
+const PTS_FULL = 10, PTS_HALF = 5;            // right on the first listen / right after a replay
+const RATE = [["まだまだ", 0], ["まあまあ", 5], ["できた！", 10]]; // summary self-rating
+const PASS = 0.7;                              // share of points that clears an episode
+const RANKS = [[0,"見習い","Apprentice"],[120,"門の生徒","Student of the Gate"],[300,"名前の学生","Student of Names"],[600,"風を呼ぶ者","Wind Caller"],[1000,"影を追う者","Shadow Hunter"],[1600,"真の名の魔法使い","Mage of True Names"]];
+
+/* ---------- state ---------- */
+const $ = s => document.querySelector(s);
+const app = $("#app"), audio = $("#audio");
+let index = [], results = {}, db = null;
+let ep = null, st = null;    // current episode + its saved progress
+let order = {};              // shuffled choice order per question, fixed per episode
+let stopAt = null;           // when playing a single transcript line
+let fresh = false;           // true while a playthrough started from the beginning
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0"); };
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.h); toast.h=setTimeout(()=>t.hidden=true,2600); }
+function lsGet(k, d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch{ return d; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+
+const pointsOf = r => r ? (r.points ?? r.best ?? 0) : 0;
+const isDone = r => !!(r && (r.finished || r.best != null));
+function totalXp(){ return Object.values(results).reduce((a,r)=>a+(isDone(r)?pointsOf(r):0),0); }
+function rankFor(xp){ let r=RANKS[0], next=null; for(let i=0;i<RANKS.length;i++){ if(xp>=RANKS[i][0]){ r=RANKS[i]; next=RANKS[i+1]||null; } } return {r,next}; }
+function earLevel(){ let lv = 0; for (const e of index){ const r = results[e.id]; if (r && r.passed) lv = Math.max(lv, e.level); } return lv; }
+
+/* ---------- storage: shared db when available, browser storage as fallback ---------- */
+async function loadResults(){
+  results = lsGet("ld-results", {});
+  try{
+    db = await window.claude?.use?.("db");
+    if (!db) return;
+    // the shared store is the record: what isn't there (a reset) is cleared on this phone too
+    const snap = await db.collection("results").get();
+    results = {};
+    snap.docs.forEach(d => { results[d.id] = d.data(); });
+    lsSet("ld-results", results);
+  }catch(e){ db = null; }
+}
+let saveTimer = null;
+function save(){
+  results[ep.id] = JSON.parse(JSON.stringify(st));
+  lsSet("ld-results", results);
+  if (!db) return;
+  const id = ep.id, body = results[id];
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try{ await db.collection("results").doc(id).set(body); }
+    catch(e){ toast("Saved on this phone only (" + (e.code || "offline") + ")"); }
+  }, 400);
+}
+
+/* ---------- home ---------- */
+function home(){
+  ep = null; st = null; audio.pause();
+  const xp = totalXp(), {r, next} = rankFor(xp), lv = earLevel();
+  const pct = next ? Math.round((xp - r[0]) / (next[0] - r[0]) * 100) : 100;
+  const firstOpen = index.findIndex(e => !isDone(results[e.id]));
+  const rows = index.map((e,i) => {
+    const res = results[e.id], done = isDone(res), started = res && !done && res.listens > 0;
+    const locked = i > 0 && !isDone(results[index[i-1].id]) && !res;
+    const cls = done && res.passed ? "done" : locked ? "locked" : (i === firstOpen ? "next" : "");
+    const badge = done ? `<span class="chip ${res.passed?"matcha":"kaki"}">${pointsOf(res)} / ${res.max} XP</span>`
+      : started ? `<span class="chip kaki">続き</span>` : `<span class="chip">Lv ${e.level}</span>`;
+    return `<button class="ep ${cls}" data-id="${e.id}" ${locked?"disabled":""}>
+      <span class="n">${done && res.passed?"✓":Number(e.id)}</span>
+      <span class="t"><b>${esc(e.title)}</b><span class="muted small">${esc(e.title_en)} · ${fmt(e.duration)}</span></span>
+      ${badge}</button>`;
+  }).join("");
+  app.innerHTML = `
+    <div class="row between"><h1>Listening Dojo</h1><span class="chip">風見の島</span></div>
+    <div class="card">
+      <div class="lvl"><div class="k">${lv || "–"}</div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+          <b style="font-size:18px">${r[1]} <span class="muted small">${r[2]}</span></b>
+          <div class="xpbar"><i style="width:${pct}%"></i></div>
+          <span class="muted small nums">${xp} XP${next ? ` · ${next[0]-xp} to ${next[1]}` : ""}</span>
+        </div></div>
+      <p class="muted small">The big number is your <b>ear level</b>: the hardest level you've cleared with ${Math.round(PASS*100)}% or more.</p>
+    </div>
+    <h2>Story</h2>
+    <div style="display:flex;flex-direction:column;gap:10px">${rows}</div>
+    <p class="muted small">More episodes: tell Claude "make the next episodes". They're written for your level from your scores here.</p>`;
+  app.querySelectorAll(".ep:not([disabled])").forEach(b => b.onclick = () => openEp(b.dataset.id));
+  window.scrollTo(0,0);
+}
+
+/* ---------- episode ---------- */
+async function openEp(id){
+  let data;
+  try{ data = await (await fetch(`episodes/${id}.json`)).json(); }
+  catch{ toast("Couldn't load this episode. Check your connection."); return; }
+  ep = data;
+  const saved = results[id];
+  st = saved && saved.answers ? JSON.parse(JSON.stringify(saved))
+     : saved ? { ...JSON.parse(JSON.stringify(saved)), finished: true, legacy: true, answers: {}, listens: 1, heard: true }
+     : { episode: id, level: ep.level, max: ep.quiz.length * PTS_FULL + 10, listens: 0, heard: false, answers: {}, summary: null, finished: false };
+  // keep the shuffled order stable on this phone, so a reopened episode looks the same
+  const orders = lsGet("ld-order", {});
+  orders[id] = orders[id] || ep.quiz.map(q => q.choices.map((c,i)=>i).sort(()=>Math.random()-.5));
+  lsSet("ld-order", orders); order = orders[id];
+  audio.src = `audio/${id}.mp3`; audio.load(); fresh = false; stopAt = null;
+  if ("mediaSession" in navigator){
+    navigator.mediaSession.metadata = new MediaMetadata({ title: `${ep.id} · ${ep.title}`, artist: "Listening Dojo", album: "風見の島" });
+  }
+  renderEp(); window.scrollTo(0,0);
+}
+
+function renderEp(){
+  const total = ep.quiz.length, answered = Object.values(st.answers).filter(a => a.final).length;
+  app.innerHTML = `
+    <button class="back" id="back">← Story</button>
+    <div class="row between"><h1>${esc(ep.title)}</h1><span class="chip kaki">Lv ${ep.level}</span></div>
+    <p class="muted" style="margin-top:-8px">${esc(ep.title_en)} · Episode ${Number(ep.id)}</p>
+    <div class="card player">
+      <div class="row">
+        <button class="play" id="play" aria-label="Play or pause">${audio.paused ? icon("play") : icon("pause")}</button>
+        <div class="track">
+          <div class="prog"><i id="bar"></i></div>
+          <div class="row between small muted nums"><span id="cur">0:00</span><span>${fmt(ep.duration)}</span></div>
+          <div class="row between small muted"><span>Listens</span><span class="listens">${[0,1].map(i=>`<span class="${st.listens>i?"on":""}"></span>`).join("")}</span></div>
+        </div>
+      </div>
+      <p class="small muted">${playHint()}</p>
+      ${st.heard && !st.finished && st.listens < 2 ? `<button class="btn" id="replay">Listen again · answers after this earn half</button>` : ""}
+    </div>
+    ${st.finished ? resultHtml() : ""}
+    <div class="card" id="quiz">
+      <div class="row between"><h2>問題</h2><span class="muted small nums">${st.legacy ? "" : `${answered} / ${total}`}</span></div>
+      ${st.legacy ? `<p class="muted">You finished this one before the app saved answers, so only your score is kept. The transcript is below.</p>`
+        : st.heard ? ep.quiz.map((q,i)=>qHtml(q,i)).join("") + summaryHtml()
+        : `<p class="muted">The questions open when the first listen ends. Listen once all the way through, with no transcript.</p>`}
+      ${st.heard && !st.finished ? `<button class="btn primary" id="finish">Finish · show the answers</button>
+        <p class="muted small" id="finishnote">${finishNote()}</p>` : ""}
+    </div>
+    ${st.finished ? transcriptHtml() : ""}`;
+  $("#back").onclick = home;
+  $("#play").onclick = togglePlay;
+  const rp = $("#replay"); if (rp) rp.onclick = replay;
+  const fin = $("#finish"); if (fin) fin.onclick = finish;
+  app.querySelectorAll("[data-q]").forEach(b => b.onclick = () => answer(+b.dataset.q, +b.dataset.c));
+  app.querySelectorAll("[data-hint]").forEach(b => b.onclick = () => { b.textContent = ep.quiz[+b.dataset.hint].hint; b.style.textDecoration="none"; });
+  app.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => rate(+b.dataset.rate));
+  const sm = $("#showmodel"); if (sm) sm.onclick = () => { $("#model").hidden = false; sm.hidden = true; };
+  app.querySelectorAll("[data-line]").forEach(b => b.onclick = () => playLine(+b.dataset.line));
+  tick();
+}
+
+function playHint(){
+  if (st.finished) return "Finished. Replay the whole episode or tap single lines in the transcript.";
+  if (!st.heard) return st.listens ? "First listen in progress. You can lock your phone." : "Press play and just listen. You can lock your phone.";
+  if (st.listens < 2) return "Answer what you can for full points. A wrong pick gets a second try after you listen again.";
+  return "Replay used: right answers now earn half points.";
+}
+function finishNote(){
+  const open = ep.quiz.filter((q,i) => !(st.answers[i] && st.answers[i].final)).length;
+  return open ? `${open} question${open>1?"s":""} still open: they count as 0 if you finish now.` : "All answered. Finish to see the right answers and the transcript.";
+}
+const icon = n => n === "play"
+  ? `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>`
+  : `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>`;
+
+function qHtml(q, i){
+  const a = st.answers[i] || { tries: [] };
+  const canTry = !st.finished && !a.final && (a.tries.length === 0 || st.listens >= 2);
+  const btns = order[i].map(c => {
+    let cls = "choice";
+    if (a.tries.includes(c)) cls += c === 0 ? " right" : " wrong";
+    else if (st.finished && c === 0) cls += " right";
+    const dis = !canTry || a.tries.includes(c);
+    return `<button class="${cls}" data-q="${i}" data-c="${c}" ${dis?"disabled":""}>${esc(q.choices[c])}</button>`;
+  }).join("");
+  let note = "";
+  if (!a.final && a.tries.length) note = st.listens >= 2 ? `<span class="small" style="color:var(--hard)">Not that one. One more try, for half points.</span>`
+                                                          : `<span class="small" style="color:var(--hard)">Not that one. Listen again for a second try.</span>`;
+  const pts = a.final ? `<span class="pts ${a.points===PTS_FULL?"full":a.points?"half":"zero"}">${a.points ? "+"+a.points : "0"} XP</span>`
+            : st.finished ? `<span class="pts zero">0 XP</span>` : "";
+  return `<div class="q"><div class="row between"><span class="qt">${i+1}. ${esc(q.q)}</span>${pts}</div>
+    ${a.final || st.finished ? "" : `<button class="hint" data-hint="${i}">English hint</button>`}
+    ${note}<div class="choices">${btns}</div></div>`;
+}
+function summaryHtml(){
+  const s = ep.summary, done = st.summary !== null;
+  return `<div class="q"><span class="qt">${ep.quiz.length+1}. ${esc(s.q)}</span>
+    <p class="muted small">${esc(s.hint)}</p>
+    <button class="hint" id="showmodel" ${done||st.finished?"hidden":""}>I said it. Show an example</button>
+    <div class="model" id="model" ${done||st.finished?"":"hidden"}>${esc(s.model)}</div>
+    <div class="rate">${RATE.map(([l,p],i)=>`<button class="choice ${st.summary===i?"right":""}" data-rate="${i}" ${done||st.finished?"disabled":""}>${l}</button>`).join("")}</div></div>`;
+}
+
+function answer(qi, choice){
+  if (st.finished || !st.heard) return;
+  const a = st.answers[qi] || (st.answers[qi] = { tries: [] });
+  if (a.final || a.tries.includes(choice)) return;
+  if (a.tries.length && st.listens < 2) return;
+  a.tries.push(choice);
+  const right = choice === 0;
+  if (right){ a.final = true; a.right = true; a.points = (st.listens >= 2 || a.tries.length > 1) ? PTS_HALF : PTS_FULL; }
+  else if (a.tries.length >= 2){ a.final = true; a.right = false; a.points = 0; }
+  save(); renderEp();
+}
+function rate(i){ if (st.summary !== null || st.finished) return; st.summary = i; save(); renderEp(); }
+
+function finish(){
+  if (st.finished) return;
+  const qpts = Object.values(st.answers).reduce((a,x)=>a+(x.final ? x.points : 0),0);
+  st.points = qpts + (st.summary !== null ? RATE[st.summary][1] : 0);
+  st.finished = true;
+  st.passed = st.points >= st.max * PASS;
+  st.firstListenRight = Object.values(st.answers).filter(a => a.right && a.points === PTS_FULL).length;
+  st.missedLines = [...new Set(ep.quiz.map((q,i)=> (st.answers[i] && st.answers[i].points === PTS_FULL) ? null : q.line).filter(x=>x!==null))];
+  st.summarySelf = st.summary !== null ? RATE[st.summary][0] : null;
+  st.finishedAt = new Date().toISOString();
+  save(); renderEp();
+  toast(st.passed ? `+${st.points} XP · Episode cleared!` : `+${st.points} XP · Finished`);
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function resultHtml(){
+  const pct = Math.round(pointsOf(st)/st.max*100), missed = st.missedLines || [];
+  return `<div class="card">
+    <div class="row between"><h2>${st.passed ? "クリア！" : "もう少し"}</h2><span class="chip ${st.passed?"matcha":"kaki"} nums">${pointsOf(st)} / ${st.max} XP</span></div>
+    <p class="muted">${st.legacy ? `Cleared with ${pct}%.` : `${st.firstListenRight} of ${ep.quiz.length} right on the first listen (${pct}%).`}
+    ${missed.length ? ` The red lines in the transcript were the hard ones: tell Claude "add the missed lines to Anki" and they become listening cards.` : st.legacy ? "" : " Nothing missed. Clean ears!"}</p></div>`;
+}
+function transcriptHtml(){
+  const missed = new Set(st.missedLines || []);
+  return `<div class="card"><h2>Transcript</h2><p class="muted small">Tap a line to hear it again.</p>
+    ${ep.lines.map((l,i)=>`<button class="line ${missed.has(i)?"missed":""}" data-line="${i}"><span class="who">${esc(l.who)}</span><span>${esc(l.text)}</span></button>`).join("")}</div>`;
+}
+
+/* ---------- audio ---------- */
+function startFromTop(){
+  audio.currentTime = 0; fresh = true;
+  // an interrupted first listen starts over as the first listen; only a playthrough after it counts as the replay
+  if (!st.finished){ st.listens = st.heard ? Math.min(2, st.listens + 1) : 1; save(); }
+}
+function togglePlay(){
+  stopAt = null;
+  if (!audio.paused){ audio.pause(); return; }
+  const atEnd = audio.ended || audio.currentTime >= ep.duration - 0.3;
+  if (atEnd || (audio.currentTime < 0.5 && !fresh)){
+    // a new playthrough; after the first one it is a replay, and Listen again explains the cost
+    if (st.heard && !st.finished && st.listens < 2){ replay(); return; }
+    if (!st.heard || st.finished || st.listens >= 2) startFromTop();
+  }
+  audio.play().catch(()=>toast("Tap play again to start the audio."));
+  renderEp();
+}
+function replay(){
+  stopAt = null; startFromTop();
+  audio.play().catch(()=>toast("Tap play again to start the audio."));
+  renderEp(); toast("Second listen: answers now earn half");
+}
+function playLine(i){
+  const l = ep.lines[i]; if (l.start == null) return;
+  fresh = false; audio.currentTime = l.start; stopAt = l.end;
+  audio.play().catch(()=>{});
+  app.querySelectorAll(".line").forEach((b,j)=>b.classList.toggle("playing", j===i));
+}
+function tick(){
+  const bar = $("#bar"), cur = $("#cur"), pb = $("#play");
+  if (bar && ep) bar.style.width = Math.min(100, audio.currentTime / (ep.duration||1) * 100) + "%";
+  if (cur) cur.textContent = fmt(audio.currentTime);
+  if (pb) pb.innerHTML = audio.paused ? icon("play") : icon("pause");
+}
+audio.addEventListener("timeupdate", () => {
+  if (stopAt != null && audio.currentTime >= stopAt){ audio.pause(); stopAt = null; app.querySelectorAll(".line.playing").forEach(b=>b.classList.remove("playing")); }
+  tick();
+});
+audio.addEventListener("play", tick);
+audio.addEventListener("pause", tick);
+audio.addEventListener("ended", () => {
+  if (!ep) return;
+  const wasFresh = fresh; fresh = false;
+  if (wasFresh && !st.heard){ st.heard = true; save(); renderEp(); toast("Questions are open"); return; }
+  renderEp();
+});
+if ("mediaSession" in navigator){
+  navigator.mediaSession.setActionHandler("play", () => audio.play());
+  navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+  navigator.mediaSession.setActionHandler("seekbackward", () => { audio.currentTime = Math.max(0, audio.currentTime - 10); });
+}
+
+/* ---------- boot ---------- */
+(async () => {
+  try{ index = await (await fetch("episodes/index.json")).json(); }
+  catch{ app.innerHTML = `<div class="card"><p>Couldn't load the episode list. Check your connection and reopen the app.</p></div>`; return; }
+  results = lsGet("ld-results", {});
+  home();
+  await loadResults();
+  if (!ep) home();
+})();
+/* ---------- offline edition: service worker, offline badge, results export ---------- */
+const OFFLINE_FILES = ["/listening-dojo/index.html", "/listening-dojo/manifest.webmanifest", "/listening-dojo/icon.png", "/listening-dojo/audio/01.mp3", "/listening-dojo/audio/02.mp3", "/listening-dojo/audio/03.mp3", "/listening-dojo/episodes/01.json", "/listening-dojo/episodes/02.json", "/listening-dojo/episodes/03.json", "/listening-dojo/episodes/index.json"];
+async function offlineReady(){
+  try{ const c = await caches.open("dojo-e50606f08e"); const have = await c.keys(); return have.length >= OFFLINE_FILES.length; }catch{ return false; }
+}
+const _home = home;
+home = function(){
+  _home();
+  const box = document.createElement("div"); box.className = "card";
+  box.innerHTML = `<div class="row between"><b>Offline</b><span class="chip" id="offchip">checking…</span></div>
+    <p class="muted small">Progress is saved on this phone. When you're online, copy your results and paste them to Claude.</p>
+    <button class="btn" id="copyres">Copy my results for Claude</button>`;
+  app.appendChild(box);
+  $("#copyres").onclick = async () => {
+    const txt = "Listening Dojo results:\n" + JSON.stringify(results);
+    try{ await navigator.clipboard.writeText(txt); toast("Copied. Paste it to Claude."); }
+    catch{ const t = document.createElement("textarea"); t.value = txt; t.rows = 4; t.style.width = "100%"; box.appendChild(t); t.select(); toast("Select all and copy"); }
+  };
+  const paint = ok => { const c = $("#offchip"); if (c){ c.textContent = ok ? "Ready ✓" : "Downloading…"; c.className = "chip " + (ok ? "matcha" : "kaki"); } };
+  offlineReady().then(ok => { paint(ok); if (!ok) setTimeout(() => offlineReady().then(paint), 4000); });
+};
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => { if (!ep) home(); }).catch(()=>{});
+
+</script>
+
+</body></html>
