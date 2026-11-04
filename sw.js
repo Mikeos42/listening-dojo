@@ -1,6 +1,6 @@
 // Listening Dojo offline: everything is cached at install, then served from the cache.
 // Audio requests carry a Range header on iOS, so cached mp3s are answered with 206 slices.
-const V = "dojo-49878a9983";
+const V = "dojo-7c9f025d04";
 const FILES = ["/listening-dojo/index.html", "/listening-dojo/manifest.webmanifest", "/listening-dojo/icon.png", "/listening-dojo/audio/01.mp3", "/listening-dojo/audio/02.mp3", "/listening-dojo/audio/03.mp3", "/listening-dojo/episodes/01.json", "/listening-dojo/episodes/02.json", "/listening-dojo/episodes/03.json", "/listening-dojo/episodes/index.json"];
 const INDEX = FILES[0];
 self.addEventListener("install", e => {

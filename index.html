@@ -222,6 +222,7 @@ function renderEp(){
           <div class="row between small muted"><span>Listens</span><span class="listens">${[0,1].map(i=>`<span class="${st.listens>i?"on":""}"></span>`).join("")}</span></div>
         </div>
       </div>
+      <div class="row"><button class="btn" id="back15">⟲ 15 s back</button><button class="btn" id="restart">⏮ From the start</button></div>
       <p class="small muted">${playHint()}</p>
       ${st.heard && !st.finished && st.listens < 2 ? `<button class="btn" id="replay">Listen again · answers after this earn half</button>` : ""}
     </div>
@@ -238,6 +239,8 @@ function renderEp(){
   $("#back").onclick = home;
   $("#play").onclick = togglePlay;
   const rp = $("#replay"); if (rp) rp.onclick = replay;
+  $("#back15").onclick = back15;
+  $("#restart").onclick = restart;
   const fin = $("#finish"); if (fin) fin.onclick = finish;
   app.querySelectorAll("[data-q]").forEach(b => b.onclick = () => answer(+b.dataset.q, +b.dataset.c));
   app.querySelectorAll("[data-hint]").forEach(b => b.onclick = () => { b.textContent = ep.quiz[+b.dataset.hint].hint; b.style.textDecoration="none"; });
@@ -353,6 +356,21 @@ function replay(){
   audio.play().catch(()=>toast("Tap play again to start the audio."));
   renderEp(); toast("Second listen: answers now earn half");
 }
+// interruptions: rewinding never costs a listen; starting over during the first listen keeps it the first listen
+function back15(){
+  stopAt = null;
+  audio.currentTime = Math.max(0, audio.currentTime - 15);
+  if (audio.paused) audio.play().catch(()=>{});
+  renderEp();
+}
+function restart(){
+  stopAt = null;
+  if (st.heard && !st.finished && st.listens < 2){ replay(); return; }
+  startFromTop();
+  audio.play().catch(()=>toast("Tap play again to start the audio."));
+  renderEp();
+  if (!st.heard) toast("Starting over · still your first listen");
+}
 function playLine(i){
   const l = ep.lines[i]; if (l.start == null) return;
   fresh = false; audio.currentTime = l.start; stopAt = l.end;
@@ -395,7 +413,7 @@ if ("mediaSession" in navigator){
 /* ---------- offline edition: service worker, offline badge, results export ---------- */
 const OFFLINE_FILES = ["/listening-dojo/index.html", "/listening-dojo/manifest.webmanifest", "/listening-dojo/icon.png", "/listening-dojo/audio/01.mp3", "/listening-dojo/audio/02.mp3", "/listening-dojo/audio/03.mp3", "/listening-dojo/episodes/01.json", "/listening-dojo/episodes/02.json", "/listening-dojo/episodes/03.json", "/listening-dojo/episodes/index.json"];
 async function offlineReady(){
-  try{ const c = await caches.open("dojo-49878a9983"); const have = (await c.keys()).length; return have >= OFFLINE_FILES.length ? true : have + "/" + OFFLINE_FILES.length; }catch{ return false; }
+  try{ const c = await caches.open("dojo-7c9f025d04"); const have = (await c.keys()).length; return have >= OFFLINE_FILES.length ? true : have + "/" + OFFLINE_FILES.length; }catch{ return false; }
 }
 const _home = home;
 home = function(){
