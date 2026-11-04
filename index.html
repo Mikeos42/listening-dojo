@@ -395,14 +395,14 @@ if ("mediaSession" in navigator){
 /* ---------- offline edition: service worker, offline badge, results export ---------- */
 const OFFLINE_FILES = ["/listening-dojo/index.html", "/listening-dojo/manifest.webmanifest", "/listening-dojo/icon.png", "/listening-dojo/audio/01.mp3", "/listening-dojo/audio/02.mp3", "/listening-dojo/audio/03.mp3", "/listening-dojo/episodes/01.json", "/listening-dojo/episodes/02.json", "/listening-dojo/episodes/03.json", "/listening-dojo/episodes/index.json"];
 async function offlineReady(){
-  try{ const c = await caches.open("dojo-e50606f08e"); const have = await c.keys(); return have.length >= OFFLINE_FILES.length; }catch{ return false; }
+  try{ const c = await caches.open("dojo-49878a9983"); const have = (await c.keys()).length; return have >= OFFLINE_FILES.length ? true : have + "/" + OFFLINE_FILES.length; }catch{ return false; }
 }
 const _home = home;
 home = function(){
   _home();
   const box = document.createElement("div"); box.className = "card";
   box.innerHTML = `<div class="row between"><b>Offline</b><span class="chip" id="offchip">checking…</span></div>
-    <p class="muted small">Progress is saved on this phone. When you're online, copy your results and paste them to Claude.</p>
+    <p class="muted small" id="offnote"></p><p class="muted small">Progress is saved on this phone. When you're online, copy your results and paste them to Claude.</p>
     <button class="btn" id="copyres">Copy my results for Claude</button>`;
   app.appendChild(box);
   $("#copyres").onclick = async () => {
@@ -410,8 +410,13 @@ home = function(){
     try{ await navigator.clipboard.writeText(txt); toast("Copied. Paste it to Claude."); }
     catch{ const t = document.createElement("textarea"); t.value = txt; t.rows = 4; t.style.width = "100%"; box.appendChild(t); t.select(); toast("Select all and copy"); }
   };
-  const paint = ok => { const c = $("#offchip"); if (c){ c.textContent = ok ? "Ready ✓" : "Downloading…"; c.className = "chip " + (ok ? "matcha" : "kaki"); } };
-  offlineReady().then(ok => { paint(ok); if (!ok) setTimeout(() => offlineReady().then(paint), 4000); });
+  const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  const paint = ok => { const c = $("#offchip"), n = $("#offnote"); if (!c) return;
+    c.textContent = ok === true ? "Ready ✓" : "Downloading " + (ok || "…"); c.className = "chip " + (ok === true ? "matcha" : "kaki");
+    n.innerHTML = !standalone ? "<b>You're in the browser.</b> The Home Screen app keeps its own copy: open the Dojo icon on Wi-Fi and wait for Ready ✓ there."
+      : ok === true ? "Works in flight mode now." : "Keep this open on Wi-Fi until it says Ready ✓."; };
+  const poll = () => offlineReady().then(ok => { paint(ok); if (ok !== true) setTimeout(poll, 3000); });
+  poll();
 };
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(() => { if (!ep) home(); }).catch(()=>{});
 
